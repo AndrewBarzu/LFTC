@@ -66,7 +66,25 @@ class TestHashmap(unittest.TestCase):
         except Exception:
             self.assertTrue(False)
         self.assertEqual(val, "a")
+        print()
         print(hashmap)
+
+    def test_add_two_with_collision(self):
+        hashmap = Hashmap()
+        self.assertEqual(hashmap.size(), 0)
+        hashmap.add("a")
+        self.assertEqual(hashmap.size(), 1)
+        val = hashmap.add("da")
+        self.assertEqual(hashmap.size(), 2)
+        try:
+            val = hashmap.getIfExists(val[0], val[1])
+            self.assertTrue(True)
+        except Exception:
+            self.assertTrue(False)
+        self.assertEqual(val, "da")
+        print()
+        print(hashmap)
+
 
 if __name__ == '__main__':
     unittest.main()
