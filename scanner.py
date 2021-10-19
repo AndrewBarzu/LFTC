@@ -126,7 +126,7 @@ def scan(filename: str, separator_pattern: re.Pattern, reserved_words: dict) -> 
             lineNumber += 1
             i = 0
             for token in separator_pattern.split(line):
-                if token == " " or token == "\n" or token == "":
+                if token in (" ", "\t", "", "\n"):
                     continue
                 i += 1
                 try:
@@ -143,7 +143,7 @@ def scan(filename: str, separator_pattern: re.Pattern, reserved_words: dict) -> 
 if __name__ == "__main__":
     filename = sys.argv[1]
     reducer = lambda x, y: x + "|" + y
-    regex_separators = r'(' + str(reduce(reducer, escaped_operators.keys())) + "|" + str(reduce(reducer, escaped_separators.keys())) + '| |\\r\\n)'
+    regex_separators = r'(' + str(reduce(reducer, escaped_operators.keys())) + "|" + str(reduce(reducer, escaped_separators.keys())) + '| |\\t|\\r\\n)'
     print(regex_separators)
     regex_separator_pattern = re.compile(regex_separators)
     ST, PIF = scan(filename, regex_separator_pattern, reserved_words)

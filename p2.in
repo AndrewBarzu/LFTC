@@ -4,9 +4,9 @@ void main()
  read(a);
  read(b);
  while b != 0 {
-  reminder = a % b;
-  a = b;
-  b = reminder;
+	reminder = a % b;
+	a = b;
+	b = reminder;
  }
  write(a);
 }
