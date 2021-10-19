@@ -1,10 +1,10 @@
 void main()
 {
-	number[] array = [1, 2, 3, 4];
-	number len = 4;
-	number sum = 0;
-	while len >= 0 {
-		sum += array[len - 1];
-	}
-	write(sum);
+ number[] array = [1, 2, 3, 4];
+ number len = 4;
+ number sum = 0;
+ while len >= 0 {
+  sum += array[len - 1];
+ }
+ write(sum);
 }
