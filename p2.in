@@ -1,0 +1,12 @@
+void main()
+{
+	number a, b, reminder;
+	read(a);
+	read(b);
+	while b != 0 {
+		reminder = a % b;
+		a = b;
+		b = reminder;   //maybe make array destructuring, like [a, b] = [b, a%b] for faster assignments
+	}
+	write(a);
+}
