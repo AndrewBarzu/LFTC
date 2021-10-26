@@ -89,16 +89,16 @@ separators = {
 }
 
 def isIdentifier(token: str) -> bool:
-    return len(token) >= 1 and token[0].isalpha() and (len(token) == 1 or token[1:].isalnum())
+    return token.isidentifier()
 
 def isNumber(token: str) -> bool:
-    return len(token) >= 1 and (token.isnumeric() or (token[0] in ("+", "-") and token[1:].isnumeric()))
+    return len(token) >= 1 and (token.isnumeric() and str(int(token)) == token or (token[0] in ("+", "-") and token[1:].isnumeric() and str(int(token[1:])) == token[1:]))
 
 def isChar(token: str) -> bool:
     return len(token) == 3 and token[0] == "'" and token[-1] == "'"
 
 def isString(token: str) -> bool:
-    return len(token) >= 2 and token[0] == '"' and token[-1] == '"' and (len(token) == 2 or token[1:-1].isalnum())
+    return len(token) >= 2 and token[0] == '"' and token[-1] == '"'
 
 def isBool(token: str) -> bool:
     return token in ("true", "false")
@@ -115,37 +115,83 @@ def detect(token: str, reserved_words: dict) -> str:
         return "IDENTIFIER"
     if isConstant(token):
         return "CONSTANT"
-    raise LexicalError("Token `{0}` is not a reserved word or a valid identifier or constant!".format(token))
+    raise LexicalError("Token `{0}` is not a reserved word or a valid identifier or constant".format(token))
 
-def scan(filename: str, separator_pattern: re.Pattern, reserved_words: dict) -> Tuple[SymbolTable, List]:
+def scan(filename: str, separator_pattern: re.Pattern, reserved_words: dict) -> Union[Tuple[SymbolTable, List], None]:
     ST = SymbolTable()
     PIF: List[Tuple[str, Union[Tuple[int, int], 0]]] = list()
     lineNumber = 0
+    quoted = ""
+    number = ""
+    err = False
     with open(filename) as f:
         for line in f:
             lineNumber += 1
-            i = 0
+            prev = ""
             for token in separator_pattern.split(line):
-                if token in (" ", "\t", "", "\n"):
+                if token == "":
                     continue
-                i += 1
+                if token[0] in ("'", '"') or quoted != "":
+                    quoted += token
+                    if token[-1] in ("'", '"') and quoted != "\"":
+                        token = quoted
+                        quoted = ""
+                    else:
+                        continue
+                elif token in ("+", "-"):
+                    if prev == "CONSTANT" or prev == "IDENTIFIER":
+                        pass
+                    else:
+                        number += token
+                        continue
+                elif number in ("+", "-"):
+                    if token == "0":
+                        char = line.find(token) + 1
+                        print("0 can't be preceeded by sign, on line {0}, character {1}".format(lineNumber, char))
+                        err = True
+                    number += token
+                    token = number
+                    number = ""
+
+                if token in (" ", "\t", "\n"):
+                    continue
                 try:
                     tok = detect(token, reserved_words)
                     pos = 0
                     if tok in ("IDENTIFIER", "CONSTANT"):
                         pos = ST.add(token)
                     PIF.append((tok, pos))
+                    prev = tok
                 except LexicalError as e:
-                    print(str(e) + " on line {0}, token {1}".format(lineNumber, i))
-
-    return ST, PIF
+                    char = line.find(token) + 1
+                    print(str(e) + ", on line {0}, character {1}".format(lineNumber, char))
+                    err = True
+    token = quoted
+    if token not in (" ", "\t", "\n"):
+        try:
+            tok = detect(token, reserved_words)
+            pos = 0
+            if tok in ("IDENTIFIER", "CONSTANT"):
+                pos = ST.add(token)
+            PIF.append((tok, pos))
+        except LexicalError as e:
+            char = line.find(token) + 1
+            print(str(e) + ", on line {0}, character {1}".format(lineNumber, char))
+            err = True
+    if not err:
+        return ST, PIF
 
 if __name__ == "__main__":
-    filename = sys.argv[1]
+    # filename = sys.argv[1]
+    filename = "p1.in"
     reducer = lambda x, y: x + "|" + y
-    regex_separators = r'(' + str(reduce(reducer, escaped_operators.keys())) + "|" + str(reduce(reducer, escaped_separators.keys())) + '| |\\t|\\r\\n)'
-    print(regex_separators)
+    regex_separators = r'(' + str(reduce(reducer, escaped_operators.keys())) + "|" + str(reduce(reducer, escaped_separators.keys())) + '| |\\t|\\n)'
     regex_separator_pattern = re.compile(regex_separators)
-    ST, PIF = scan(filename, regex_separator_pattern, reserved_words)
-    print(str(ST))
-    print(PIF)
+    ret = scan(filename, regex_separator_pattern, reserved_words)
+    if ret is not None:
+        ST, PIF = ret
+        with open("ST.out", "w") as st, open("PIF.out", "w") as pif:
+            st.writelines(str(ST))
+            pif.writelines(map(lambda tup: str(tup) + "\n", PIF))
+            print(str(ST))
+            print(PIF)

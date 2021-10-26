@@ -4,7 +4,7 @@ void main()
  number len = 4;
  number sum = 0;
  while len >= 0 {
-  sum += array[len - 1];
+  sum = sum + array[len - 1];
  }
  write(sum);
 }
