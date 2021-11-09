@@ -2,8 +2,8 @@ import re
 from typing import Tuple, List, Union
 
 from hashmap import Hashmap as SymbolTable
-import sys
 from functools import reduce
+from FiniteAutomaton import FiniteAutomaton
 
 class LexicalError(Exception):
     pass
@@ -88,11 +88,11 @@ separators = {
     ",": 39,
 }
 
-def isIdentifier(token: str) -> bool:
-    return token.isidentifier()
+def isIdentifier(token: str, identifierAutomaton: FiniteAutomaton) -> bool:
+    return identifierAutomaton.trySequence(token)
 
-def isNumber(token: str) -> bool:
-    return len(token) >= 1 and (token.isnumeric() and str(int(token)) == token or (token[0] in ("+", "-") and token[1:].isnumeric() and str(int(token[1:])) == token[1:]))
+def isNumber(token: str, numberAutomaton: FiniteAutomaton) -> bool:
+    return numberAutomaton.trySequence(token)
 
 def isChar(token: str) -> bool:
     return len(token) == 3 and token[0] == "'" and token[-1] == "'"
@@ -103,21 +103,21 @@ def isString(token: str) -> bool:
 def isBool(token: str) -> bool:
     return token in ("true", "false")
 
-def isConstant(token: str) -> bool:
-    return isNumber(token) or isChar(token) or isString(token) or isBool(token)
+def isConstant(token: str, numberAutomaton: FiniteAutomaton) -> bool:
+    return isNumber(token, numberAutomaton) or isChar(token) or isString(token) or isBool(token)
 
-def detect(token: str, reserved_words: dict) -> str:
+def detect(token: str, reserved_words: dict, identifierAutomaton: FiniteAutomaton, numberAutomaton: FiniteAutomaton) -> str:
     if token == "":
         return "NONE"
     if token in reserved_words or token in separators or token in operators:
         return token
-    if isIdentifier(token):
+    if isIdentifier(token, identifierAutomaton):
         return "IDENTIFIER"
-    if isConstant(token):
+    if isConstant(token, numberAutomaton):
         return "CONSTANT"
     raise LexicalError("Token `{0}` is not a reserved word or a valid identifier or constant".format(token))
 
-def scan(filename: str, separator_pattern: re.Pattern, reserved_words: dict) -> Union[Tuple[SymbolTable, List], None]:
+def scan(filename: str, separator_pattern: re.Pattern, reserved_words: dict, identifierAutomaton: FiniteAutomaton, numberAutomaton: FiniteAutomaton) -> Union[Tuple[SymbolTable, List], None]:
     ST = SymbolTable()
     PIF: List[Tuple[str, Union[Tuple[int, int], 0]]] = list()
     lineNumber = 0
@@ -156,7 +156,7 @@ def scan(filename: str, separator_pattern: re.Pattern, reserved_words: dict) -> 
                 if token in (" ", "\t", "\n"):
                     continue
                 try:
-                    tok = detect(token, reserved_words)
+                    tok = detect(token, reserved_words, identifierAutomaton, numberAutomaton)
                     pos = 0
                     if tok in ("IDENTIFIER", "CONSTANT"):
                         pos = ST.add(token)
@@ -169,7 +169,7 @@ def scan(filename: str, separator_pattern: re.Pattern, reserved_words: dict) -> 
     token = quoted
     if token not in (" ", "\t", "\n"):
         try:
-            tok = detect(token, reserved_words)
+            tok = detect(token, reserved_words, identifierAutomaton, numberAutomaton)
             pos = 0
             if tok in ("IDENTIFIER", "CONSTANT"):
                 pos = ST.add(token)
@@ -187,7 +187,9 @@ if __name__ == "__main__":
     reducer = lambda x, y: x + "|" + y
     regex_separators = r'(' + str(reduce(reducer, escaped_operators.keys())) + "|" + str(reduce(reducer, escaped_separators.keys())) + '| |\\t|\\n)'
     regex_separator_pattern = re.compile(regex_separators)
-    ret = scan(filename, regex_separator_pattern, reserved_words)
+    identifierAutomaton = FiniteAutomaton.parse('identifier_FA.in')
+    numberAutomaton = FiniteAutomaton.parse('number_constant_FA.in')
+    ret = scan(filename, regex_separator_pattern, reserved_words, identifierAutomaton, numberAutomaton)
     if ret is not None:
         ST, PIF = ret
         with open("ST.out", "w") as st, open("PIF.out", "w") as pif:
